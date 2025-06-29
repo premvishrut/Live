@@ -2,130 +2,66 @@
 <html lang="hi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=portrait" />
-  <title>GIF Weather App</title>
-
-  <!-- Tailwind CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rain Checker ☔</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
-
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#fb923c" />
-
-  <!-- Icons -->
-  <link rel="icon" href="icons/icon-192.png" type="image/png" />
-
   <style>
     body {
       font-family: 'Inter', sans-serif;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      transition: background-image 0.5s ease-in-out;
+      transition: background-image 0.5s ease;
       min-height: 100vh;
-    }
-
-    .bg-overlay {
-      backdrop-filter: blur(4px);
-      background-color: rgba(0, 0, 0, 0.3);
     }
   </style>
 </head>
-<body class="text-white flex items-center justify-center p-4">
+<body class="flex items-center justify-center text-white p-4">
 
-  <div class="relative z-10 bg-overlay rounded-xl p-6 w-full max-w-md space-y-6 shadow-xl">
-    <h1 class="text-4xl font-bold text-center">🌤 मौसम ऐप</h1>
+  <div class="z-10 w-full max-w-md p-6 rounded-xl bg-black/30 text-white space-y-6">
+    <h1 class="text-3xl font-bold text-center">Check Rain in City</h1>
 
     <div class="flex gap-2">
-      <input
-        id="cityInput"
-        type="text"
-        placeholder="शहर का नाम"
-        class="flex-grow p-3 rounded-full text-black"
-      />
-      <button
-        onclick="fetchWeather()"
-        class="bg-orange-500 px-4 py-2 rounded-full hover:bg-orange-600"
-      >
-        खोजें
-      </button>
+      <input id="cityInput" type="text" placeholder="Enter city name…" class="flex-grow p-3 rounded-full text-black"/>
+      <button onclick="checkRain()" class="px-4 py-2 bg-blue-600 rounded-full hover:bg-blue-700">Check</button>
     </div>
 
-    <div id="result" class="text-center space-y-2">
-      <!-- Weather output here -->
-    </div>
+    <div id="status" class="text-center space-y-2"></div>
   </div>
 
-  <!-- Dark/Light Mode Toggle -->
-  <button
-    onclick="toggleTheme()"
-    class="absolute top-4 right-4 p-2 bg-white/30 rounded-full"
-    title="Light/Dark"
-  >
-    🌗
-  </button>
-
-  <!-- Service Worker Registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(reg => console.log('✅ Service Worker Registered:', reg.scope))
-        .catch(err => console.error('❌ SW Failed:', err));
-    }
-  </script>
-
-  <!-- Weather Script -->
   <script>
     const apiKey = '458997eb2cb309af49b0446aac6d02e8';
-    const backgrounds = {
-      Clear: 'gifs/clear.gif',
-      Sunny: 'gifs/sunny.gif',
-      Clouds: 'gifs/cloudy.gif',
-      Rain: 'gifs/rainy.gif',
-      Default: 'gifs/clear.gif'
-    };
+    const rainGif = 'gifs/rainy.gif';
+    const defaultGif = 'gifs/clear.gif';
+    const statusDiv = document.getElementById('status');
 
-    const resultDiv = document.getElementById('result');
-
-    function fetchWeather() {
+    async function checkRain() {
       const city = document.getElementById('cityInput').value.trim();
-      if (!city) return alert('कृपया शहर का नाम लिखें।');
+      if (!city) return statusDiv.textContent = "Enter city name.";
+      statusDiv.innerHTML = "Loading…";
 
-      resultDiv.innerHTML = '🔄 लोड हो रहा है...';
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+        const data = await res.json();
+        if (data.cod !== 200) throw new Error(data.message);
 
-      fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=hi`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.cod !== 200) throw new Error(data.message);
-
-          const weather = data.weather[0].main;
-          const temp = data.main.temp;
-          const desc = data.weather[0].description;
-          const cityName = `${data.name}, ${data.sys.country}`;
-
-          const bg = backgrounds[weather] || backgrounds.Default;
-          document.body.style.backgroundImage = `url(${bg})`;
-
-          resultDiv.innerHTML = `
-            <h2 class="text-2xl font-semibold">${cityName}</h2>
-            <p class="text-lg">🌡 तापमान: ${Math.round(temp)}°C</p>
-            <p class="capitalize">📝 ${desc}</p>
-          `;
-        })
-        .catch(err => {
-          resultDiv.innerHTML = `<p class="text-red-300">❌ त्रुटि: ${err.message}</p>`;
-        });
+        const condition = data.weather[0].main.toLowerCase();
+        if (condition.includes('rain') || condition.includes('drizzle') || condition.includes('thunderstorm')) {
+          document.body.style.backgroundImage = `url('${rainGif}')`;
+          statusDiv.innerHTML = `<p>🌧️ Yes, it's raining in <strong>${data.name}</strong>!</p>`;
+        } else {
+          document.body.style.backgroundImage = `url('${defaultGif}')`;
+          statusDiv.innerHTML = `<p>No rain in <strong>${data.name}</strong>. It's ${data.weather[0].description}.</p>`;
+        }
+      } catch (err) {
+        document.body.style.backgroundImage = `url('${defaultGif}')`;
+        statusDiv.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+      }
     }
 
-    function toggleTheme() {
-      document.body.classList.toggle('invert');
-    }
-
-    // Default background (clear)
-    document.body.style.backgroundImage = "url('gifs/clear.gif')";
+    // Set default background at start
+    document.body.style.backgroundImage = `url('${defaultGif}')`;
   </script>
+
 </body>
 </html>

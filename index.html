@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="hi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Live Weather - लाइव मौसम</title>
+
+    <!-- Manifest for PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4f46e5" />
+
+    <!-- Apple Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
+
+    <!-- Fonts & Tailwind (only if not using PostCSS in build) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+
+    <!-- Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/service-worker.js')
+            .then((registration) => {
+              console.log('✅ Service Worker registered with scope:', registration.scope);
+            })
+            .catch((err) => {
+              console.log('❌ Service Worker registration failed:', err);
+            });
+        });
+      }
+    </script>
+
+    <!-- Optional: PWA Install Prompt (Custom Button Use) -->
+    <script>
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // 👉 आप चाहें तो किसी बटन पर click करके installPrompt दे सकते हैं:
+        // deferredPrompt.prompt();
+      });
+    </script>
+  </body>
+</html>

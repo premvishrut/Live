@@ -1,63 +1,138 @@
 <!DOCTYPE html>
 <html lang="hi">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="/icon-192.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Weather App</title>
 
-    <title>Live Weather - लाइव मौसम</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Manifest for PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#4f46e5" />
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#fb923c" />
 
-    <!-- Apple Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/icon-512.png" />
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="icons/icon-192.png" type="image/png" />
 
-    <!-- Fonts & Tailwind (only if not using PostCSS in build) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
 
-    <style>
-      body {
-        margin: 0;
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6;
+    .bg-animated {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .overlay {
+      background-color: rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center text-white">
+
+  <!-- GIF Background -->
+  <video id="weatherBackground" autoplay loop muted playsinline class="bg-animated"></video>
+
+  <!-- Overlay for readability -->
+  <div class="absolute inset-0 overlay"></div>
+
+  <!-- Main App Card -->
+  <div class="z-10 w-full max-w-sm p-6 rounded-3xl bg-white/80 backdrop-blur-md text-gray-900 space-y-4 shadow-xl">
+
+    <h1 class="text-3xl font-bold text-center text-orange-600">लाइव मौसम</h1>
+
+    <input
+      id="cityInput"
+      type="text"
+      placeholder="शहर का नाम..."
+      class="w-full p-3 rounded-xl border border-orange-300 focus:ring-2 focus:ring-orange-500 text-center text-lg"
+    />
+
+    <button
+      onclick="fetchWeather()"
+      class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white text-lg font-semibold rounded-xl transition-all"
+    >
+      मौसम देखें
+    </button>
+
+    <div id="weatherInfo" class="text-center space-y-2 hidden">
+      <h2 id="location" class="text-xl font-bold"></h2>
+      <p id="description" class="capitalize text-gray-700"></p>
+      <p id="temperature" class="text-4xl font-black text-orange-600"></p>
+    </div>
+
+    <p id="error" class="text-center text-red-600 hidden"></p>
+  </div>
+
+  <script>
+    const apiKey = '458997eb2cb309af49b0446aac6d02e8';
+    const weatherVideo = document.getElementById('weatherBackground');
+
+    function getBackgroundGif(condition, isDay) {
+      if (condition.includes('clear')) {
+        return 'gifs/clear.gif';
+      } else if (condition.includes('cloud')) {
+        return 'gifs/cloudy.gif';
+      } else if (condition.includes('rain') || condition.includes('drizzle')) {
+        return 'gifs/rainy.gif';
+      } else {
+        return 'gifs/sunny.gif';
       }
-    </style>
-  </head>
+    }
 
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    async function fetchWeather() {
+      const city = document.getElementById('cityInput').value.trim();
+      const weatherInfo = document.getElementById('weatherInfo');
+      const errorText = document.getElementById('error');
 
-    <!-- Register Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('/service-worker.js')
-            .then((registration) => {
-              console.log('✅ Service Worker registered with scope:', registration.scope);
-            })
-            .catch((err) => {
-              console.log('❌ Service Worker registration failed:', err);
-            });
-        });
+      if (!city) {
+        errorText.textContent = "कृपया शहर का नाम भरें।";
+        errorText.classList.remove('hidden');
+        weatherInfo.classList.add('hidden');
+        weatherVideo.src = 'gifs/clear.gif';
+        return;
       }
-    </script>
 
-    <!-- Optional: PWA Install Prompt (Custom Button Use) -->
-    <script>
-      let deferredPrompt;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        // 👉 आप चाहें तो किसी बटन पर click करके installPrompt दे सकते हैं:
-        // deferredPrompt.prompt();
-      });
-    </script>
-  </body>
+      errorText.classList.add('hidden');
+
+      try {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=hi`
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message);
+        }
+
+        const main = data.weather[0].main.toLowerCase();
+        const icon = data.weather[0].icon;
+        const isDay = icon.endsWith('d');
+
+        document.getElementById('location').textContent = `${data.name}, ${data.sys.country}`;
+        document.getElementById('description').textContent = data.weather[0].description;
+        document.getElementById('temperature').textContent = `${Math.round(data.main.temp)}°C`;
+
+        weatherInfo.classList.remove('hidden');
+        weatherVideo.src = getBackgroundGif(main, isDay);
+      } catch (err) {
+        errorText.textContent = "त्रुटि: " + err.message;
+        errorText.classList.remove('hidden');
+        weatherInfo.classList.add('hidden');
+        weatherVideo.src = 'gifs/clear.gif';
+      }
+    }
+
+    // Default GIF
+    weatherVideo.src = 'gifs/clear.gif';
+  </script>
+
+</body>
 </html>
